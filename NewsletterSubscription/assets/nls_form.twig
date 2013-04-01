@@ -1,0 +1,15 @@
+{% form_theme form 'assets/nls_fields.twig' %}
+
+{% if error %}
+    <p class="newslettersubscriptionerror">{{ error }}</p>
+{% endif %}
+{% if message %}
+    <p class="newslettersubscriptionmessage">{{ message }}</p>
+{% endif %}
+{% if showform %}
+<form action="#" method="post">
+    {{ form_widget(form) }}
+
+    <input type="submit" name="submit" value="{{ button_text }}" />
+</form>
+{% endif %}

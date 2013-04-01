@@ -1,0 +1,13 @@
+<h1><a href="{{ paths.root }}">{{ app.config.general.sitename }}</a></h1>
+<h2>Newsletter subscription confirmation request</h2>
+
+<hr/>
+
+<p>Hi, {{ data.email }}.</p>
+<p>To confirm your subscription to our newsletter please click the following link:</p>
+<p>{{ paths.canonicalurl }}?confirm={{ data.confirmkey }}&email={{ data.email }}</p>
+
+<hr/>
+
+<p><b>IMPORTANT:</b> If you did not request this subscription just ignore this message.</p>
+

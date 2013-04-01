@@ -1,0 +1,50 @@
+# This is the config file for the NewsletterSubscription extension.
+
+stylesheet:   assets/nls.css
+template:     assets/nls_form.twig
+button_text:  Send it now!
+
+messages:
+  confirmation_sent: Thanks! A confirmation message has been sent. Plesase follow its instructions to confirm your subscription.
+  confirmation_resent: Thanks! A new confirmation message has been sent. Please disregard any previous confirmation message. 
+  confirmed: Thanks! Your subscription have been confirmed. 
+  error: There are errors in the form data. Please correct them and retry.
+  already_subscribed: This email is already subscribed. Please use another one.
+  cannot_confirm: This confirmation link seems to be erroneous or outdated. Please retry or subscribe again.
+  error_technical: Something went wrong in the website and your request couldn't be processed. Please try again later.
+
+email:
+  sender:
+    email:      magabriel+test@gmail.com
+    name:       Bolt website mailer
+  notify_to:
+    email:      magabriel+test@gmail.com
+    name:       Bolt website admin  
+  messages:
+    confirmation:
+      template: assets/nls_email_confirmation.twig
+      subject:  Please confirm your subscription
+    confirmed:
+      template: assets/nls_email_confirmed.twig
+      subject:  Your subscription has been confirmed
+    notification:
+      template: assets/nls_email_notification.twig
+      subject:  New subscriber
+    notification_unconfirmed:
+      template: assets/nls_email_notification.twig
+      subject:  New subscriber (pending confirmation)      
+  options:
+    notify_unconfirmed: true 
+    prepend_sitename: true
+ 
+form:
+  fields:
+    email:
+      label: Email address
+      placeholder: Your email address ..
+    agree:
+      label: Subscribe to our newsletter?
+      placeholder: <em>Yes</em>, I want to subscribe to your newsletter.
+  
+
+
