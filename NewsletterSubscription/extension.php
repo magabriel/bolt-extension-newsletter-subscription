@@ -117,6 +117,9 @@ class Extension extends \Bolt\BaseExtension
             if ($urlArgs->get('confirm')) {
                 $showForm = false;
                 $results = $this->confirmSubscriber($urlArgs->get('confirm'), $urlArgs->get('email'));
+            } elseif ($urlArgs->get('unsubscribe')) {
+                $showForm = false;
+                $results = $this->unsubscribeSubscriber($urlArgs->get('unsubscribe'), $urlArgs->get('email'));
             }
         }
 
@@ -198,9 +201,20 @@ class Extension extends \Bolt\BaseExtension
 
         // Already subscribed?
         if ($subscriber) {
-            if ($subscriber['confirmed']) {
-                $ret['error'] = $this->config['messages']['already_subscribed'];
-                return $ret;
+            // Active? (could mean a former subscriber that unsubscribed)
+            if ($subscriber['active']) {
+                // Confirmed?
+                if ($subscriber['confirmed']) {
+                    $ret['error'] = $this->config['messages']['already_subscribed'];
+                    return $ret;
+                }
+            } else {
+                // An unsubscribed subscribed can resubscribe as a new subscriber (...)
+                $old = $subscriber;
+                $subscriber = $this->storage->initSubscriber($data['email']);
+                $subscriber['id'] = $old['id'];
+                $this->storage->updateSubscriber($subscriber);
+                $isNew = true;
             }
         } else {
             // Create subscription
@@ -281,6 +295,55 @@ class Extension extends \Bolt\BaseExtension
         return $ret;
     }
 
+    protected function unsubscribeSubscriber($confirmKey, $email)
+    {
+        $ret = array();
+
+        // Missing data?
+        if (empty($confirmKey) || empty($email)) {
+            $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
+            return $ret;
+        }
+
+        // Bad email?
+        $subscriber = $this->storage->findSubscriber($email);
+        if (!$subscriber) {
+            $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
+            return $ret;
+        }
+
+        // Wrong key?
+        if ($subscriber['confirmkey'] != $confirmKey) {
+            $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
+            return $ret;
+        }
+
+        // Already unsubscribed?
+        if (!$subscriber['active']) {
+            $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
+            return $ret;
+        }
+
+        // At last, unsubscribe it
+        $subscriber['active'] = false;
+        $subscriber['dateunsubscribed'] = date('Y-m-d H:i:s');
+        $this->storage->updateSubscriber($subscriber);
+
+        // Send unsubscription email
+        $res = $this->mailer->sendUserUnsubscriptionEmail($subscriber);
+        if ($res) {
+            $ret['message'] = $this->config['messages']['unsubscribed'];
+        } else {
+            $ret['error'] = $this->config['messages']['error_technical'];
+            // Undo the unsubscription just set
+            $subscriber['active'] = false;
+            $subscriber['dateunsubscribed'] = null;
+            $this->storage->updateSubscriber($subscriber);
+        }
+
+        return $ret;
+    }
+
     /**
      * Merge configuration array with defaults
      * @see http://www.php.net/manual/en/function.array-merge-recursive.php#92195
@@ -289,7 +352,7 @@ class Extension extends \Bolt\BaseExtension
      * @param array $configuration
      * @return array merged configuration with defaults
      */
-    protected function mergeConfiguration(array &$defaults, array &$configuration)
+    protected function mergeConfiguration(array $defaults, array $configuration)
     {
         $merged = $defaults;
 

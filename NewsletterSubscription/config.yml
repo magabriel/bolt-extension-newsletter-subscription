@@ -11,6 +11,8 @@ messages:
   error: There are errors in the form data. Please correct them and retry.
   already_subscribed: This email is already subscribed. Please use another one.
   cannot_confirm: This confirmation link seems to be erroneous or outdated. Please retry or subscribe again.
+  cannot_unsubscribe: This unsubscribe link seems to be erroneous or outdated. Please correct it and retry.
+  unsubscribed: Thanks! Your subscription have been removed. 
   error_technical: Something went wrong in the website and your request couldn't be processed. Please try again later.
 
 email:
@@ -27,6 +29,9 @@ email:
     confirmed:
       template: assets/nls_email_confirmed.twig
       subject:  Your subscription has been confirmed
+    unsubscribed:
+      template: assets/nls_email_unsubscribed.twig
+      subject:  Your subscription has been removed      
     notification:
       template: assets/nls_email_notification.twig
       subject:  New subscriber

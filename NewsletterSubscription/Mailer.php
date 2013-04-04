@@ -64,6 +64,18 @@ class Mailer
     }
 
 
+    public function sendUserUnsubscriptionEmail(array $data)
+    {
+        $res = $this->sendEmail(
+                $this->config['email']['messages']['unsubscribed']['subject'],
+                array($this->config['email']['sender']['email'] => $this->config['email']['sender']['name']),
+                array($data['email'] => $data['email']),
+                $this->config['email']['messages']['unsubscribed']['template'],
+                $data);
+
+        return $res;
+    }
+
     public function sendUserConfirmedEmail(array $data)
     {
         $res = $this->sendEmail(
