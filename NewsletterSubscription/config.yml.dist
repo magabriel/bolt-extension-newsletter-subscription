@@ -1,0 +1,79 @@
+# This is the config file for the NewsletterSubscription extension.
+
+# Files to use. They can be safely overwriten by copying them with another name inside the extension directory 
+# Example-> stylesheet: custom/mystylesheet.css 
+stylesheet:     assets/nls.css          # Stylesheets used
+template:       assets/nls_form.twig    # Template with the subscribe form
+template_extra: assets/nls_extra.twig   # Extra template used to show messages
+
+# Text of the submit button
+button_text:    Send 
+
+# A really secret string used to download the subscribers list
+admin_secret:   changethisstringtosomethingreallysecret
+
+# Messages to be shown to users
+messages:
+  confirmation_sent: Thanks! A confirmation message has been sent. Please follow its instructions to confirm your subscription.
+  confirmation_resent: Thanks! A new confirmation message has been sent. Please disregard any previous confirmation message. 
+  confirmed: Thanks! Your subscription have been confirmed. 
+  error: There are errors in the form data. Please correct them and retry.
+  already_subscribed: This email is already subscribed. Please use another one.
+  cannot_confirm: This confirmation link seems to be erroneous or outdated. Please retry or subscribe again.
+  cannot_unsubscribe: This unsubscribe link seems to be erroneous or outdated. Please correct it and retry.
+  unsubscribed: Thanks! Your subscription have been removed. 
+  error_technical: Something went wrong in the website and your request couldn't be processed. Please try again later.
+
+# Email related configurations
+email:
+  # Sender of all emails
+  sender:
+    email:      magabriel+test@gmail.com
+    name:       Bolt website mailer
+    
+  # Recipient of notification emails (i.e. an administrator)
+  notify_to:
+    email:      magabriel+test@gmail.com
+    name:       Bolt website admin  
+  
+  # Emal messages configuration. Templates can be overriden the usual way 
+  messages:
+    confirmation:
+      template: assets/nls_email_confirmation.twig
+      subject:  Please confirm your subscription
+    confirmed:
+      template: assets/nls_email_confirmed.twig
+      subject:  Your subscription has been confirmed
+    unsubscribed:
+      template: assets/nls_email_unsubscribed.twig
+      subject:  Your subscription has been removed      
+    notification:
+      template: assets/nls_email_notification.twig
+      subject:  New subscriber
+    notification_unconfirmed:
+      template: assets/nls_email_notification.twig
+      subject:  New subscriber (pending confirmation)
+    notification_unsubscribed:
+      template: assets/nls_email_notification.twig
+      subject:  A subscriber just unsubscribed      
+  
+  # Some email-related options    
+  options:
+    notify_unconfirmed: true    # Send notifications when a user just subscribed (but did not yet confirm)?   
+    notify_unsubscribed: true   # Send notifications when a user unsubscribed?
+    prepend_sitename: true      # Prepend [sitename] to all email subjects?  
+
+# Subscribe form definition
+form:
+  fields:
+    email:
+      label: Email address
+      placeholder: Your email address...
+      class: ''
+    agree:
+      label: Subscribe to our newsletter?
+      placeholder: <em>Yes</em>, I want to subscribe to your newsletter.
+      class: ''
+  
+
+

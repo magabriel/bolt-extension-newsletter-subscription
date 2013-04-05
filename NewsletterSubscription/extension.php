@@ -2,7 +2,6 @@
 namespace NewsletterSubscription;
 
 use Symfony\Component\Form\Form;
-
 use Silex\Application;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -20,9 +19,13 @@ class Extension extends \Bolt\BaseExtension
     protected $mailer;
     protected $defaults;
 
+    /**
+     * Provide information about this extension
+     *
+     * @see \Bolt\BaseExtension::info()
+     */
     public function info()
     {
-
         $data = array(
                 'name' => "Newsletter Subscription",
                 'description' => "Allow your users to subscribe to your newsletter with two-phase confirmation.",
@@ -40,19 +43,36 @@ class Extension extends \Bolt\BaseExtension
 
     }
 
+    /**
+     * Initializes this extension
+     *
+     * @see \Bolt\BaseExtension::initialize()
+     */
     public function initialize()
     {
         $this->loadConfig();
 
-        $this->storage = new Storage($this->app);
-        $this->mailer = new Mailer($this->app, $this->config);
+        $this->setUp();
 
         $this->checkDatabase();
 
+        $this->addTwigFunction('newslettersubscription', 'newsletterSubscription');
+    }
+
+    /**
+     * Sets several things up
+     */
+    protected function setUp()
+    {
+        // Helper objects
+        $this->storage = new Storage($this->app);
+        $this->mailer = new Mailer($this->app, $this->config);
+
+        // Twig path
+        $this->app['twig.loader.filesystem']->addPath(__DIR__);
+
         // Insert the proper CSS
         $this->addCSS($this->config['stylesheet']);
-
-        $this->addTwigFunction('newslettersubscription', 'newsletterSubscription');
     }
 
     /**
@@ -62,16 +82,15 @@ class Extension extends \Bolt\BaseExtension
      */
     public function newsletterSubscription()
     {
-        $form = $this->createForm();
-
         $html = '';
 
-        switch ($this->app['request']->getMethod())
-        {
+        switch ($this->app['request']->getMethod()) {
             case 'GET':
                 $html = $this->processGetActions();
+
                 if (!$html) {
                     // Default action is showing the form
+                    $form = $this->createForm();
                     $html = $this->processForm($form);
                 }
 
@@ -111,13 +130,14 @@ class Extension extends \Bolt\BaseExtension
             $handled = true;
 
         } elseif ($urlArgs->get('adminaction') == 'download') {
-            $this->downloadSubscribersFile();
+            $this->downloadSubscribersFile($urlArgs->get('secret'));
             $handled = true;
         }
 
         if ($handled) {
-            $html = $this->app['twig']->render($this->config['template_extra'],
-                    array(
+            $html = $this->app['twig']
+                         ->render($this->config['template_extra'],
+                         array(
                             "message" => isset($results['message']) ? $results['message'] : '',
                             "error" => isset($results['error']) ? $results['error'] : ''
                     ));
@@ -134,8 +154,6 @@ class Extension extends \Bolt\BaseExtension
      */
     protected function createForm()
     {
-        $this->app['twig.loader.filesystem']->addPath(__DIR__);
-
         $form = $this->app['form.factory']->createBuilder('form');
 
         $fields = $this->config['form']['fields'];
@@ -193,19 +211,19 @@ class Extension extends \Bolt\BaseExtension
             } else {
                 $results['error'] = $this->config['messages']['error'];
             }
-
         }
 
-        $formhtml = $this->app['twig']->render($this->config['template'],
+        $formhtml = $this->app['twig']
+                         ->render($this->config['template'],
                          array(
-                             "form" => $form->createView(),
-                             "message" => isset($results['message']) ? $results['message'] : '',
-                             "error" => isset($results['error']) ? $results['error'] : '',
-                             "showform" => $showForm,
-                             "button_text" => $this->config['button_text'],
-                             "secret" => $this->config['admin_secret'],
-                             "secret_default" => $this->defaults['admin_secret']
-                          ));
+                         "form" => $form->createView(),
+                         "message" => isset($results['message']) ? $results['message'] : '',
+                         "error" => isset($results['error']) ? $results['error'] : '',
+                         "showform" => $showForm,
+                         "button_text" => $this->config['button_text'],
+                         "secret" => isset($this->config['admin_secret']) ? $this->config['admin_secret'] : '',
+                         "secret_default" => $this->defaults['admin_secret']
+                ));
 
         return $formhtml;
     }
@@ -225,9 +243,10 @@ class Extension extends \Bolt\BaseExtension
      */
     protected function loadConfig()
     {
-        // Config defaults
-        $this->defaults = $this->getConfigDefaults();
+        $this->config = $this->getConfig();
 
+        // Load defaults and merge into config
+        $this->defaults = $this->getConfigDefaults();
         $this->config = $this->mergeConfiguration($this->defaults, $this->config);
     }
 
@@ -240,13 +259,13 @@ class Extension extends \Bolt\BaseExtension
     {
         $configdistfile = $this->basepath . '/config.yml.dist';
 
-        // Check if there's a config.yml.dist
+        // Check there's a config.yml.dist
         if (is_readable($configdistfile)) {
             $yamlparser = new \Symfony\Component\Yaml\Parser();
             return $yamlparser->parse(file_get_contents($configdistfile) . "\n");
         }
 
-        // No default config.
+        // No default config (weird!)
         return array();
     }
 
@@ -345,7 +364,7 @@ class Extension extends \Bolt\BaseExtension
             return $ret;
         }
 
-        // At last, confirm it
+        // At last, confirm him
         $subscriber['confirmed'] = true;
         $subscriber['dateconfirmed'] = date('Y-m-d H:i:s');
         $this->storage->updateSubscriber($subscriber);
@@ -435,9 +454,21 @@ class Extension extends \Bolt\BaseExtension
 
     /**
      * Send a CSV file with all subscribers to the browser to be downloaded.
+     *
+     * @param string $secret Secret string to authorize the download
      */
-    protected function downloadSubscribersFile()
+    protected function downloadSubscribersFile($secret)
     {
+        // Only start the download if the admin_secret has been set and is different from default
+        if (!isset($this->config['admin_secret']) || $this->config['admin_secret'] == $this->defaults['admin_secret']) {
+            return;
+        }
+
+        // Check correct secret
+        if ($secret != $this->config['admin_secret']) {
+            return;
+        }
+
         $subscribers = $this->storage->findAllSubscribers();
 
         $quote = '"';
@@ -450,25 +481,20 @@ class Extension extends \Bolt\BaseExtension
             $keys = array_keys($subscribers[0]);
             $keys[] = 'unsubscribe_link';
 
-            $lines[] = $quote.implode($quote.$sep.$quote, $keys).$quote;
+            $lines[] = $quote . implode($quote . $sep . $quote, $keys) . $quote;
         }
 
         // Records
-        foreach ($subscribers as $subscriber)
-        {
+        foreach ($subscribers as $subscriber) {
             // Add unsubscribe link when it does make sense
             $subscriber['unsubscribe_link'] = '';
             if ($subscriber['confirmed'] && $subscriber['active']) {
-                $subscriber['unsubscribe_link'] =
-                    sprintf('%s?unsubscribe=%s&email=%s',
-                            $this->app['paths']['canonicalurl'],
-                            $subscriber['confirmkey'],
-                            $subscriber['email']);
+                $subscriber['unsubscribe_link'] = sprintf('%s?unsubscribe=%s&email=%s', $this->app['paths']['canonicalurl'],
+                    $subscriber['confirmkey'], $subscriber['email']);
             }
 
-            $lines[] = $quote.implode($quote.$sep.$quote, $subscriber).$quote;
+            $lines[] = $quote . implode($quote . $sep . $quote, $subscriber) . $quote;
         }
-
 
         $data = implode("\n", $lines);
 

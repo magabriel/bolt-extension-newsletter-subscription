@@ -19,8 +19,8 @@
 {% if userlevelName in ['Administrator', 'Developer'] %}
     <nav class="box">
         <h4>Admin actions</h4>
-    {% if admin_secret == secret %}
-        <p class="newslettersubscriptionmessage">Please change the <em>admin_secret</em> option in config.yml to activate admin options.</p>
+    {% if secret is not defined or secret == secret_default %}
+        <p class="newslettersubscriptionerror">Please change the <em>admin_secret</em> option in config.yml to activate admin options.</p>
     {% else %}
         <ul>
             <li><a href="{{ paths.canonicalurl }}?adminaction=download&secret={{ secret }}">Download subscribers</a></li>
