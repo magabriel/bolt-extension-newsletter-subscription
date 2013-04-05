@@ -13,3 +13,18 @@
     <input type="submit" name="submit" value="{{ button_text }}" />
 </form>
 {% endif %}
+
+{% set userlevels = app.users.getUserLevels() %}
+{% set userlevelName = userlevels[app.users.getCurrentUser().userlevel] %}
+{% if userlevelName in ['Administrator', 'Developer'] %}
+    <nav class="box">
+        <h4>Admin actions</h4>
+    {% if admin_secret == secret %}
+        <p class="newslettersubscriptionmessage">Please change the <em>admin_secret</em> option in config.yml to activate admin options.</p>
+    {% else %}
+        <ul>
+            <li><a href="{{ paths.canonicalurl }}?adminaction=download&secret={{ secret }}">Download subscribers</a></li>
+        </ul>
+    {% endif %}
+    </nav>
+{% endif %}

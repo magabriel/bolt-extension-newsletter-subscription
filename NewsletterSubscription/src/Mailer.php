@@ -3,6 +3,11 @@ namespace NewsletterSubscription;
 
 use Bolt\Application;
 
+/**
+ * Manages the mails sent by the extension
+ *
+ * @author Miguel Angel Gabriel (magabriel@gmail.com)
+ */
 class Mailer
 {
     protected $config = array();
@@ -12,43 +17,6 @@ class Mailer
     {
         $this->app = $app;
         $this->config = $config;
-    }
-
-    protected function normalizeData(array $data)
-    {
-        // change boolean fields to "yes" or "no".
-        foreach($data as $key => $value) {
-            if (gettype($value)=="boolean") {
-                $data[$key] = ($value ? "yes" : "no");
-            }
-        }
-
-        return $data;
-    }
-
-    protected function sendEmail($subject, $from, $to, $template, array $data)
-    {
-        $data = $this->normalizeData($data);
-
-        $htmlBody = $this->app['twig']->render(
-                    $template,
-                    array('data' =>  $data )
-                );
-
-        if ($this->config['email']['options']['prepend_sitename']) {
-            $subject = '['.$this->app['config']['general']['sitename'].'] '.$subject;
-        }
-
-        $message = \Swift_Message::newInstance()
-                    ->setSubject($subject)
-                    ->setFrom($from)
-                    ->setTo($to)
-                    ->setBody(strip_tags($htmlBody))
-                    ->addPart($htmlBody, 'text/html');
-
-        $res = $this->app['mailer']->send($message);
-
-        return $res;
     }
 
     public function sendUserConfirmationEmail(array $data)
@@ -62,7 +30,6 @@ class Mailer
 
         return $res;
     }
-
 
     public function sendUserUnsubscriptionEmail(array $data)
     {
@@ -93,6 +60,8 @@ class Mailer
         $subject =  $this->config['email']['messages']['notification']['subject'];
         if (!$data['confirmed']) {
             $subject =  $this->config['email']['messages']['notification_unconfirmed']['subject'];
+        } elseif (!$data['active']) {
+            $subject =  $this->config['email']['messages']['notification_unsubscribed']['subject'];
         }
 
         $res = $this->sendEmail(
@@ -105,5 +74,26 @@ class Mailer
         return $res;
     }
 
+    protected function sendEmail($subject, $from, $to, $template, array $data)
+    {
+        $htmlBody = $this->app['twig']->render(
+                $template,
+                array('data' =>  $data )
+        );
 
+        if ($this->config['email']['options']['prepend_sitename']) {
+            $subject = '['.$this->app['config']['general']['sitename'].'] '.$subject;
+        }
+
+        $message = \Swift_Message::newInstance()
+                        ->setSubject($subject)
+                        ->setFrom($from)
+                        ->setTo($to)
+                        ->setBody(strip_tags($htmlBody))
+                        ->addPart($htmlBody, 'text/html');
+
+        $res = $this->app['mailer']->send($message);
+
+        return $res;
+    }
 }

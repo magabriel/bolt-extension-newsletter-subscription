@@ -1,15 +1,24 @@
 <?php
 namespace NewsletterSubscription;
+
+use Symfony\Component\Form\Form;
+
 use Silex\Application;
 use Symfony\Component\Validator\Constraints as Assert;
 
-require_once "Storage.php";
-require_once "Mailer.php";
+require_once "src/Storage.php";
+require_once "src/Mailer.php";
 
+/**
+ * Newsletter Subscription Extension
+ *
+ * @author Miguel Angel Gabriel (magabriel@gmail.com)
+ */
 class Extension extends \Bolt\BaseExtension
 {
     protected $storage;
     protected $mailer;
+    protected $defaults;
 
     public function info()
     {
@@ -24,7 +33,7 @@ class Extension extends \Bolt\BaseExtension
                 'first_releasedate' => "2013-04-01",
                 'latest_releasedate' => "2013-04-01",
                 'required_bolt_version' => "1.0",
-                'highest_bolt_version' => "1.0",
+                'highest_bolt_version' => "1.1",
         );
 
         return $data;
@@ -40,21 +49,89 @@ class Extension extends \Bolt\BaseExtension
 
         $this->checkDatabase();
 
-        $this->setUp();
+        // Insert the proper CSS
+        $this->addCSS($this->config['stylesheet']);
 
         $this->addTwigFunction('newslettersubscription', 'newsletterSubscription');
     }
 
+    /**
+     * Twig function entry point
+     *
+     * @return \Twig_Markup
+     */
     public function newsletterSubscription()
     {
         $form = $this->createForm();
 
-        $html = $this->processForm($form);
+        $html = '';
+
+        switch ($this->app['request']->getMethod())
+        {
+            case 'GET':
+                $html = $this->processGetActions();
+                if (!$html) {
+                    // Default action is showing the form
+                    $html = $this->processForm($form);
+                }
+
+                break;
+
+            case 'POST':
+                $form = $this->createForm();
+                $html = $this->processForm($form);
+
+                break;
+
+            default:
+                $html = '<p>Invalid method</p>';
+        }
 
         return new \Twig_Markup($html, 'UTF-8');
 
     }
 
+    /**
+     * Carry out the actions requested via a 'GET' method
+     *
+     * @return string HTML to show (blank = not handled)
+     */
+    protected function processGetActions()
+    {
+        $urlArgs = $this->app->request->query;
+
+        $handled = false;
+
+        if ($urlArgs->get('confirm')) {
+            $results = $this->confirmSubscriber($urlArgs->get('confirm'), $urlArgs->get('email'));
+            $handled = true;
+
+        } elseif ($urlArgs->get('unsubscribe')) {
+            $results = $this->unsubscribeSubscriber($urlArgs->get('unsubscribe'), $urlArgs->get('email'));
+            $handled = true;
+
+        } elseif ($urlArgs->get('adminaction') == 'download') {
+            $this->downloadSubscribersFile();
+            $handled = true;
+        }
+
+        if ($handled) {
+            $html = $this->app['twig']->render($this->config['template_extra'],
+                    array(
+                            "message" => isset($results['message']) ? $results['message'] : '',
+                            "error" => isset($results['error']) ? $results['error'] : ''
+                    ));
+            return $html;
+        }
+
+        return ''; // Not handled
+    }
+
+    /**
+     * Create the subscribe form
+     *
+     * @return Form
+     */
     protected function createForm()
     {
         $this->app['twig.loader.filesystem']->addPath(__DIR__);
@@ -94,7 +171,13 @@ class Extension extends \Bolt\BaseExtension
         return $form->getForm();
     }
 
-    protected function processForm($form)
+    /**
+     * Process the subscribre form
+     *
+     * @param Form $form
+     * @return string HTML
+     */
+    protected function processForm(Form $form)
     {
         $results = array();
         $showForm = true;
@@ -111,27 +194,18 @@ class Extension extends \Bolt\BaseExtension
                 $results['error'] = $this->config['messages']['error'];
             }
 
-        } else { // GET
-
-            $urlArgs = $this->app->request->query;
-            if ($urlArgs->get('confirm')) {
-                $showForm = false;
-                $results = $this->confirmSubscriber($urlArgs->get('confirm'), $urlArgs->get('email'));
-            } elseif ($urlArgs->get('unsubscribe')) {
-                $showForm = false;
-                $results = $this->unsubscribeSubscriber($urlArgs->get('unsubscribe'), $urlArgs->get('email'));
-            }
         }
 
-        $formhtml = $this->app['twig']
-                         ->render($this->config['template'],
+        $formhtml = $this->app['twig']->render($this->config['template'],
                          array(
-                         "form" => $form->createView(),
-                         "message" => isset($results['message']) ? $results['message'] : '',
-                         "error" => isset($results['error']) ? $results['error'] : '',
-                         "showform" => $showForm,
-                         "button_text" => $this->config['button_text']
-                ));
+                             "form" => $form->createView(),
+                             "message" => isset($results['message']) ? $results['message'] : '',
+                             "error" => isset($results['error']) ? $results['error'] : '',
+                             "showform" => $showForm,
+                             "button_text" => $this->config['button_text'],
+                             "secret" => $this->config['admin_secret'],
+                             "secret_default" => $this->defaults['admin_secret']
+                          ));
 
         return $formhtml;
     }
@@ -152,38 +226,28 @@ class Extension extends \Bolt\BaseExtension
     protected function loadConfig()
     {
         // Config defaults
-        $defaults = array(
-                'stylesheet' => 'assets/nls.css',
-                'template' => 'assets/nls_form.twig',
-                'button_text' => 'Send',
-                'form' => array(
-                        'fields' => array(
-                                'email' => array(
-                                        'type' => 'email',
-                                        'label' => 'Email',
-                                        'placeholder' => 'Enter you email...',
-                                        'class' => 'email',
-                                        'required' => true,
-                                ),
-                                'agree' => array(
-                                        'type' => 'checkbox',
-                                        'label' => 'I agree',
-                                        'placeholder' => 'Yes, I want to subscribe to your newsletter',
-                                        'class' => 'checkbox',
-                                        'required' => true,
-                                )
-                        )
-                )
-        );
+        $this->defaults = $this->getConfigDefaults();
 
-        $config = $this->mergeConfiguration($defaults, $this->config);
-        $this->config = $config;
+        $this->config = $this->mergeConfiguration($this->defaults, $this->config);
     }
 
-    protected function setUp()
+    /**
+     * Get the config defaults from config.yml.dist
+     *
+     * @return array
+     */
+    public function getConfigDefaults()
     {
-        // Insert the proper CSS
-        $this->addCSS($this->config['stylesheet']);
+        $configdistfile = $this->basepath . '/config.yml.dist';
+
+        // Check if there's a config.yml.dist
+        if (is_readable($configdistfile)) {
+            $yamlparser = new \Symfony\Component\Yaml\Parser();
+            return $yamlparser->parse(file_get_contents($configdistfile) . "\n");
+        }
+
+        // No default config.
+        return array();
     }
 
     /**
@@ -232,20 +296,26 @@ class Extension extends \Bolt\BaseExtension
             } else {
                 $ret['message'] = $this->config['messages']['confirmation_resent'];
             }
+            // Notify admin if asked
+            if ($this->config['email']['options']['notify_unconfirmed']) {
+                $this->mailer->sendNotificationEmail($subscriber);
+            }
         } else {
             $ret['error'] = $this->config['messages']['error_technical'];
             // delete the row just inserted
             $this->storage->deleteSubscriber($subscriber['email']);
         }
 
-        // Notify admin if asked
-        if ($this->config['email']['options']['notify_unconfirmed']) {
-            $this->mailer->sendNotificationEmail($subscriber);
-        }
-
         return $ret;
     }
 
+    /**
+     * Confirm the subscription
+     *
+     * @param string $confirmKey The subscription key
+     * @param string $email The subscriber's email
+     * @return array Results
+     */
     protected function confirmSubscriber($confirmKey, $email)
     {
         $ret = array();
@@ -284,6 +354,8 @@ class Extension extends \Bolt\BaseExtension
         $res = $this->mailer->sendUserConfirmedEmail($subscriber);
         if ($res) {
             $ret['message'] = $this->config['messages']['confirmed'];
+            // Notify admin
+            $this->mailer->sendNotificationEmail($subscriber);
         } else {
             $ret['error'] = $this->config['messages']['error_technical'];
             // Unconfirm the confirmation just set
@@ -295,6 +367,13 @@ class Extension extends \Bolt\BaseExtension
         return $ret;
     }
 
+    /**
+     * Cancels the subscription
+     *
+     * @param string $confirmKey The subscription key
+     * @param string $email The subscriber's email
+     * @return array Results
+     */
     protected function unsubscribeSubscriber($confirmKey, $email)
     {
         $ret = array();
@@ -318,13 +397,19 @@ class Extension extends \Bolt\BaseExtension
             return $ret;
         }
 
+        // Not yet confirmed?
+        if (!$subscriber['confirmed']) {
+            $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
+            return $ret;
+        }
+
         // Already unsubscribed?
         if (!$subscriber['active']) {
             $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
             return $ret;
         }
 
-        // At last, unsubscribe it
+        // At last, unsubscribe him
         $subscriber['active'] = false;
         $subscriber['dateunsubscribed'] = date('Y-m-d H:i:s');
         $this->storage->updateSubscriber($subscriber);
@@ -333,6 +418,10 @@ class Extension extends \Bolt\BaseExtension
         $res = $this->mailer->sendUserUnsubscriptionEmail($subscriber);
         if ($res) {
             $ret['message'] = $this->config['messages']['unsubscribed'];
+            // Notify admin if asked
+            if ($this->config['email']['options']['notify_unsubscribed']) {
+                $this->mailer->sendNotificationEmail($subscriber);
+            }
         } else {
             $ret['error'] = $this->config['messages']['error_technical'];
             // Undo the unsubscription just set
@@ -345,7 +434,49 @@ class Extension extends \Bolt\BaseExtension
     }
 
     /**
-     * Merge configuration array with defaults
+     * Send a CSV file with all subscribers to the browser to be downloaded.
+     */
+    protected function downloadSubscribersFile()
+    {
+        $subscribers = $this->storage->findAllSubscribers();
+
+        $quote = '"';
+        $sep = ';';
+
+        $lines = array();
+
+        // Headers
+        if ($subscribers) {
+            $keys = array_keys($subscribers[0]);
+            $keys[] = 'unsubscribe_link';
+
+            $lines[] = $quote.implode($quote.$sep.$quote, $keys).$quote;
+        }
+
+        // Records
+        foreach ($subscribers as $subscriber)
+        {
+            // Add unsubscribe link when it does make sense
+            $subscriber['unsubscribe_link'] = '';
+            if ($subscriber['confirmed'] && $subscriber['active']) {
+                $subscriber['unsubscribe_link'] =
+                    sprintf('%s?unsubscribe=%s&email=%s',
+                            $this->app['paths']['canonicalurl'],
+                            $subscriber['confirmkey'],
+                            $subscriber['email']);
+            }
+
+            $lines[] = $quote.implode($quote.$sep.$quote, $subscriber).$quote;
+        }
+
+
+        $data = implode("\n", $lines);
+
+        \util::force_download('subcribers.csv', $data);
+    }
+
+    /**
+     * Merge configuration array with defaults (recursive)
      * @see http://www.php.net/manual/en/function.array-merge-recursive.php#92195
      *
      * @param array $defaults

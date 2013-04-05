@@ -2,18 +2,20 @@
 namespace NewsletterSubscription;
 
 use Bolt\Application;
-
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Table;
-//use Silex;
-//use Bolt;
 use util;
-use Doctrine\DBAL\Connection as DoctrineConn;
-//use Symfony\Component\EventDispatcher\Event;
 
+/**
+ * Manages the database interaction
+ *
+ * @author Miguel Angel Gabriel (magabriel@gmail.com)
+ * @see Bolt\Storage
+ *
+ */
 class Storage
 {
     protected $app;
@@ -120,7 +122,7 @@ class Storage
     }
 
     /**
-     * Creates the data for a new subscriber
+     * Creates the data for a new subscriber, ready to be inserted
      *
      * @param string $email
      * @return array $data
@@ -143,6 +145,23 @@ class Storage
     }
 
     /**
+     * Retrieve all subscribers
+     * @return array[subscriber]
+     */
+    public function findAllSubscribers()
+    {
+        $db = $this->app['db'];
+
+        $query = sprintf("SELECT * FROM %s",
+                $this->prefix . 'subscribers');
+
+        $rows = $db->fetchAll($query);
+
+        return $rows;
+
+    }
+
+    /**
      * Find a subscriber
      *
      * @param string $email
@@ -160,6 +179,10 @@ class Storage
         return $row;
     }
 
+    /**
+     * @param string $email
+     * @return integer The number of affected rows.
+     */
     public function deleteSubscriber($email)
     {
         $db = $this->app['db'];
@@ -167,6 +190,10 @@ class Storage
         return $db->delete($this->prefix . 'subscribers', array('email' => $email));
     }
 
+    /**
+     * @param array $data
+     * @return integer The number of affected rows.
+     */
     public function updateSubscriber(array $data)
     {
         $db = $this->app['db'];
@@ -181,7 +208,6 @@ class Storage
      */
     protected function getTables()
     {
-
         $sm = $this->app['db']->getSchemaManager();
 
         $tables = array();

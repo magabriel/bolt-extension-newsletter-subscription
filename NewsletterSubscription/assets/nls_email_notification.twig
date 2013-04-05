@@ -1,5 +1,9 @@
 <h1><a href="{{ paths.root }}">{{ app.config.general.sitename }}</a></h1>
-<h2>We have a new subscriber to our newsletter ({{ data.confirmed == 1 ? 'confirmed' : 'unconfirmed' }})</h2>
+{% if data.active == '1' %}
+<h2>We have a new subscriber to our newsletter ({{ data.confirmed == '1' ? 'confirmed' : 'unconfirmed' }})</h2>
+{% else %}
+<h2>A subscriber has been unsubscribed from our newsletter.</h2>
+{% endif %}
 
 <hr/>
 
