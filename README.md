@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 Newsletter Subscription Bolt Extension
 ======================================
 
