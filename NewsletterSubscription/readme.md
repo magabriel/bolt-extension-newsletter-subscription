@@ -3,11 +3,11 @@ Newsletter Subscription
 
 ---
 
-This is a **Bolt** extension. You can read more about awesome Bolt CMS built on top of Silex microframework at Bolt.cm. 
+This is a **Bolt** extension. You can read more about the awesome Bolt CMS built on top of Silex microframework at Bolt.cm. 
 
 ---
 
-The "Newsletter Subscription" extension provides automated managment of a list of newsletter subscribers. It does not deal with the actual sending of the newsletter, only with the subscription/desubscription of users.  
+The "Newsletter Subscription" extension provides automated management of a list of newsletter subscribers. It does not deal with the actual sending of the newsletter, only with the subscription/desubscription of users.  
 
 License
 -------
@@ -47,7 +47,7 @@ There are a lot of settings available in `config.yml`. All of them are self docu
 How to download the subscribers list
 ------------------------------------
 
-First of all, provide a value for `admin_secret` setting different from the default.
+First of all, provide a value for setting `admin_secret` in config.yml different from the default.
 
 Then, if you are logged in as *Developer* or *Administrator* you will see the option to download the subscribers CSV file. Just click the link and the file wil start downloading.  
  

@@ -1,14 +1,13 @@
-<<<<<<< HEAD
 Newsletter Subscription Bolt Extension
 ======================================
 
 ---
 
-This is a **Bolt** extension. You can read more about awesome Bolt CMS built on top of Silex microframework at Bolt.cm. 
+This is a **Bolt** extension. You can read more about the awesome Bolt CMS built on top of Silex microframework at Bolt.cm. 
 
 ---
 
-The "Newsletter Subscription" extension provides automated managment of a list of newsletter subscribers.
+The "Newsletter Subscription" extension provides automated management of a list of newsletter subscribers.
 
 To install it:
 
