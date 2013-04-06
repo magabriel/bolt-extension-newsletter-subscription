@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Newsletter Subscription Bolt Extension
 ======================================
 
@@ -14,4 +15,3 @@ To install it:
 - Copy the whole `NewsletterSubscription` directory to your `app/extensions` directory inside your Bolt installation and activate it the usual way. 
 
 Read more [here](NewsletterSubscription/readme.md).
-     
