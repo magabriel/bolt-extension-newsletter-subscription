@@ -3,7 +3,7 @@ Newsletter Subscription
 
 ---
 
-This is a **Bolt** extension. You can read more about the awesome Bolt CMS built on top of Silex microframework at <Bolt.cm>. 
+This is a **Bolt** extension. You can read more about the awesome Bolt CMS built on top of Silex microframework at [Bolt.cm](http://bolt.cm).  
 
 ---
 
