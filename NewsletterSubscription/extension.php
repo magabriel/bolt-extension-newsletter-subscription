@@ -471,18 +471,20 @@ class Extension extends \Bolt\BaseExtension
 
         $subscribers = $this->storage->findAllSubscribers();
 
+        if (!$subscribers) {
+            // Nothing to do
+            return;
+        }
+
         $quote = '"';
         $sep = ';';
 
         $lines = array();
 
         // Headers
-        if ($subscribers) {
-            $keys = array_keys($subscribers[0]);
-            $keys[] = 'unsubscribe_link';
-
-            $lines[] = $quote . implode($quote . $sep . $quote, $keys) . $quote;
-        }
+        $keys = array_keys($subscribers[0]);
+        $keys[] = 'unsubscribe_link';
+        $lines[] = $quote . implode($quote . $sep . $quote, $keys) . $quote;
 
         // Records
         foreach ($subscribers as $subscriber) {

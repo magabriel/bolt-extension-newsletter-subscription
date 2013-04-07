@@ -7,7 +7,7 @@ This is a **Bolt** extension. You can read more about the awesome Bolt CMS built
 
 ---
 
-The "Newsletter Subscription" extension provides automated management of a list of newsletter subscribers. It does not deal with the actual sending of the newsletter, only with the subscription/desubscription of users.  
+The "Newsletter Subscription" extension provides automated management of a list of newsletter subscribers. **It does not deal with the actual sending of the newsletter**, only with the subscription/desubscription of users. You then need to use the list of subscribers to do the send yourself using any suitable method. 
 
 License
 -------
@@ -42,7 +42,7 @@ With just the above Twig function, the extension provides:
 Settings
 --------
 
-There are a lot of settings available in `config.yml`. All of them are self documented in the file itself, so there is no point in repeating them here. Just remember that `config.yml.dist` stores all the default values, so you only need to set a given setting if you want to overwrite defaults.
+There are a lot of settings available in `config.yml`. All of them are self documented in the file itself, so there is no point in repeating them here. Just remember that `config.yml.dist` stores all the default values, so you only need to set a given setting if you want to overwrite defaults. Do not modify `config.yml.dist`.
 
 How to download the subscribers list
 ------------------------------------
@@ -66,7 +66,14 @@ or
 - The `admin_secret` setting has a value that is different from the default (`abc123` in the above example).
 - The download url provides a `secret` argument with the same value as `admin_secret`.
 
-So unauthorized persons cannot get the valuable list of your subscribers. 
+So unauthorized people cannot get the valuable list of your subscribers. 
+
+How to send the newsletter
+--------------------------
+
+That is completely up to you. Just download the subscribers list and, well, send them the newsletter... Remember that this extension just provide a means for your visitors to subscribe and unsubscribe.
+
+**Please note** that the subscribers list contains a *unsubscribe link* that you must include in the message that you send to each user, to provide them a way to unsubscribe. The link contains `confirmkey` and `email` arguments, so it is personalized for each user in the same way the *confirm subscription* link is. 
 
 
 TO-DO

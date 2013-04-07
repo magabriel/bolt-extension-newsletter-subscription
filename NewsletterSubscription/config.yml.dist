@@ -28,12 +28,12 @@ messages:
 email:
   # Sender of all emails
   sender:
-    email:      magabriel+test@gmail.com
+    email:      sender@example.com
     name:       Bolt website mailer
     
   # Recipient of notification emails (i.e. an administrator)
   notify_to:
-    email:      magabriel+test@gmail.com
+    email:      admin@example.com
     name:       Bolt website admin  
   
   # Emal messages configuration. Templates can be overriden the usual way 
@@ -61,7 +61,7 @@ email:
   options:
     notify_unconfirmed: true    # Send notifications when a user just subscribed (but did not yet confirm)?   
     notify_unsubscribed: true   # Send notifications when a user unsubscribed?
-    prepend_sitename: true      # Prepend [sitename] to all email subjects?  
+    prepend_sitename: true      # Prepend "[sitename]" to all email subjects?  
 
 # Subscribe form definition
 form:
