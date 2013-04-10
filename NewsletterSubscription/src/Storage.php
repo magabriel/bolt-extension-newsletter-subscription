@@ -1,6 +1,5 @@
 <?php
 namespace NewsletterSubscription;
-
 use Bolt\Application;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
@@ -25,9 +24,10 @@ class Storage
     {
         $this->app = $app;
 
-        $this->prefix = isset($this->app['config']['general']['database']['prefix']) ? $this->app['config']['general']['database']['prefix'] : "bolt_";
+        $this->prefix = isset($this->app['config']['general']['database']['prefix']) ?
+                              $this->app['config']['general']['database']['prefix'] : "bolt_";
 
-        if ($this->prefix[ strlen($this->prefix)-1 ] != "_") {
+        if ($this->prefix[strlen($this->prefix) - 1] != "_") {
             $this->prefix .= "_";
         }
 
@@ -45,7 +45,7 @@ class Storage
         $tables = $this->getTables();
 
         // Check the newsletter table..
-        if (!isset($tables[$this->prefix."subscribers"])) {
+        if (!isset($tables[$this->prefix . "subscribers"])) {
             return false;
         }
 
@@ -68,29 +68,85 @@ class Storage
 
         $tables = array();
 
+        // Define table subscribers
         $schema = new \Doctrine\DBAL\Schema\Schema();
-        $subscribersTable = $schema->createTable($this->prefix."subscribers");
-        $subscribersTable->addColumn("id", "integer", array("unsigned" => true, 'autoincrement' => true));
-        $subscribersTable->setPrimaryKey(array("id"));
-        $subscribersTable->addColumn("email", "string", array("length" => 64));
-        $subscribersTable->addUniqueIndex( array( "email" ) );
-        $subscribersTable->addColumn("confirmkey", "string", array("length" => 64));
-        $subscribersTable->addUniqueIndex( array( "confirmkey" ) );
-        $subscribersTable->addColumn("datesubscribed", "datetime", array('notNull' => false));
-        $subscribersTable->addColumn("confirmed", "boolean");
-        $subscribersTable->addColumn("dateconfirmed", "datetime", array('notNull' => false));
-        $subscribersTable->addColumn("active", "boolean");
-        $subscribersTable->addColumn("dateunsubscribed", "datetime", array('notNull' => false));
+        $subscribersTable = $schema->createTable($this->prefix . 'subscribers');
+
+        $subscribersTable->addColumn('id', 'integer', array(
+                         'unsigned' => true,
+                         'autoincrement' => true
+            ));
+        $subscribersTable->addColumn('email', 'string', array(
+                         'length' => 64
+            ));
+        $subscribersTable->addColumn('confirmkey', 'string', array(
+                         'length' => 64
+            ));
+        $subscribersTable->addColumn('datesubscribed', 'datetime', array(
+                         'notNull' => false
+            ));
+        $subscribersTable->addColumn('confirmed', 'boolean');
+        $subscribersTable->addColumn('dateconfirmed', 'datetime', array(
+                         'notNull' => false
+            ));
+        $subscribersTable->addColumn('active', 'boolean');
+        $subscribersTable->addColumn('dateunsubscribed', 'datetime', array(
+                         'notNull' => false
+            ));
+
+        $subscribersTable->setPrimaryKey(array(
+                         'id'
+            ));
+        $subscribersTable->addUniqueIndex(array(
+                         'email'
+            ));
+        $subscribersTable->addUniqueIndex(array(
+                         'confirmkey'
+            ));
+
         $tables[] = $subscribersTable;
 
+        // Define table extra_fields
+        $schema = new \Doctrine\DBAL\Schema\Schema();
+        $extraFieldsTable = $schema->createTable($this->prefix . 'extra_fields');
+
+        $extraFieldsTable->addColumn('id', 'integer', array(
+                         'unsigned' => true,
+                         'autoincrement' => true
+            ));
+        $extraFieldsTable->addColumn('subscribers_id', 'integer', array(
+                         'unsigned' => true
+            ));
+        $extraFieldsTable->addColumn('name', 'string', array(
+                         'length' => 30
+            ));
+        $extraFieldsTable->addColumn('value', 'string', array(
+                         'length' => 255,
+                         'notNull' => false
+            ));
+
+        $extraFieldsTable->setPrimaryKey(array(
+                         'id'
+            ));
+        $extraFieldsTable
+            ->addForeignKeyConstraint($subscribersTable, array(
+                    'subscribers_id'
+            ), array(
+                    'id'
+            ), array(
+                    "onDelete" => "CASCADE"
+            ));
+        $tables[] = $extraFieldsTable;
+
         /** @var $table Table */
-        foreach($tables as $table) {
-            // Create the table.
+        foreach ($tables as $table) {
+            // Create the tables
             if (!isset($currentTables[$table->getName()])) {
 
                 /** @var $platform AbstractPlatform */
                 $platform = $this->app['db']->getDatabasePlatform();
-                $queries = $platform->getCreateTableSQL($table);
+                $queries = $platform
+                    ->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES + AbstractPlatform::CREATE_FOREIGNKEYS);
                 $queries = implode("; ", $queries);
                 $this->app['db']->query($queries);
 
@@ -104,19 +160,26 @@ class Storage
     /**
      * Insert a subscriber
      *
-     * @param string $email
-     * @return array $data The data row just inserted
+     * @param array $data
+     * @return array The data just inserted
      */
-    public function insertSubscriber($email)
+    public function subscriberInsert(array $data)
     {
         $db = $this->app['db'];
 
-        $data = $this->initSubscriber($email);
+        // Create and insert subscriber row
+        $newData = $this->subscriberInit($data['email']);
+        $res = $db->insert($this->prefix . 'subscribers', $newData);
+        $newData['id'] = $db->lastInsertId();
 
-        $res = $db->insert($this->prefix . 'subscribers', $data);
-        $id = $db->lastInsertId();
+        // Create and insert extra_fields rows
+        $extraFields = $data;
+        unset($extraFields['email']);
+        unset($extraFields['agree']);
+        $extraFieldsRows = $this->extraFieldsInsert($extraFields, $newData['id']);
 
-        $data['id'] = $id;
+        $data = $newData;
+        $data['extra_fields'] = $extraFieldsRows;
 
         return $data;
     }
@@ -127,7 +190,7 @@ class Storage
      * @param string $email
      * @return array $data
      */
-    public function initSubscriber($email)
+    public function subscriberInit($email)
     {
         $confirmKey = sha1(microtime());
 
@@ -148,16 +211,21 @@ class Storage
      * Retrieve all subscribers
      * @return array[subscriber]
      */
-    public function findAllSubscribers()
+    public function subscriberFindAll()
     {
         $db = $this->app['db'];
 
-        $query = sprintf("SELECT * FROM %s",
-                $this->prefix . 'subscribers');
+        $query = sprintf('SELECT * FROM %s', $this->prefix . 'subscribers');
 
         $rows = $db->fetchAll($query);
 
-        return $rows;
+        $data = array();
+        foreach ($rows as $row) {
+            $row['extra_fields'] = $this->extraFieldsFind($row['id']);
+            $data[] = $row;
+        }
+
+        return $data;
 
     }
 
@@ -165,16 +233,23 @@ class Storage
      * Find a subscriber
      *
      * @param string $email
+     * @param boolen $fetchExtraFields Retrieve also extra fields
      * @return array The data row found
      */
-    public function findSubscriber($email)
+    public function subscriberFind($email, $fetchExtraFields = true)
     {
         $db = $this->app['db'];
 
-        $query = sprintf("SELECT * FROM %s WHERE email=?",
-                         $this->prefix . 'subscribers');
+        $query = sprintf("SELECT * FROM %s WHERE email = ?", $this->prefix . 'subscribers');
 
-        $row = $db->fetchAssoc($query, array($email));
+        $row = $db->fetchAssoc($query, array(
+                    $email
+            ));
+
+        if ($row && $fetchExtraFields) {
+            // Addd the extra fields
+            $row['extra_fields'] = $this->extraFieldsFind($row['id']);
+        }
 
         return $row;
     }
@@ -183,22 +258,76 @@ class Storage
      * @param string $email
      * @return integer The number of affected rows.
      */
-    public function deleteSubscriber($email)
+    public function subscriberDelete($email)
     {
         $db = $this->app['db'];
 
-        return $db->delete($this->prefix . 'subscribers', array('email' => $email));
+        return $db->delete($this->prefix . 'subscribers', array(
+                    'email' => $email
+            ));
     }
 
     /**
      * @param array $data
-     * @return integer The number of affected rows.
+     * @return array Inserted rows
      */
-    public function updateSubscriber(array $data)
+    public function subscriberUpdate(array $data)
     {
         $db = $this->app['db'];
 
-        return $db->update($this->prefix . 'subscribers', $data, array('email' => $data['email']));
+        if (isset($data['extra_fields'])) {
+            unset($data['extra_fields']);
+        }
+
+        return $db->update($this->prefix . 'subscribers', $data, array(
+                    'email' => $data['email']
+            ));
+    }
+
+    /**
+     * Find all extra fields for a subscribers_id
+     *
+     * @param int $subscribersId
+     * @return array
+     */
+    protected function extraFieldsFind($subscribersId)
+    {
+        $db = $this->app['db'];
+
+        $query = sprintf("SELECT * FROM %s WHERE subscribers_id = ?", $this->prefix . 'extra_fields');
+
+        $data = $db->fetchAll($query, array(
+                    $subscribersId
+            ));
+
+        return $data;
+    }
+
+    /**
+     * Insert the extra fields for a subscribers_id
+     *
+     * @param array $extraFields
+     * @param int $subscriberId
+     * @return array The extra fields inserted
+     */
+    protected function extraFieldsInsert(array $extraFields, $subscriberId)
+    {
+        $db = $this->app['db'];
+
+        $rows = array();
+        foreach ($extraFields as $field => $value) {
+            $data = array(
+                    'subscribers_id' => $subscriberId,
+                    'name' => $field,
+                    'value' => $value
+            );
+            $res = $db->insert($this->prefix . 'extra_fields', $data);
+            $data['id'] = $db->lastInsertId();
+
+            $rows[] = $data;
+        }
+
+        return $rows;
     }
 
     /**
@@ -213,9 +342,9 @@ class Storage
         $tables = array();
 
         foreach ($sm->listTables() as $table) {
-            if ( strpos($table->getName(), $this->prefix) == 0 ) {
+            if (strpos($table->getName(), $this->prefix) == 0) {
                 foreach ($table->getColumns() as $column) {
-                    $tables[ $table->getName() ][ $column->getName() ] = $column->getType();
+                    $tables[$table->getName()][$column->getName()] = $column->getType();
                 }
             }
         }
@@ -237,8 +366,8 @@ class Storage
         $tables = array();
 
         foreach ($sm->listTables() as $table) {
-            if ( strpos($table->getName(), $this->prefix) == 0 ) {
-                $tables[ $table->getName() ] = $table;
+            if (strpos($table->getName(), $this->prefix) == 0) {
+                $tables[$table->getName()] = $table;
             }
         }
 

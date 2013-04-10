@@ -65,15 +65,59 @@ email:
 
 # Subscribe form definition
 form:
+
+  # Basic fields that will always be in the subscription form.
+  # They are always required 
   fields:
     email:
+      type: email
       label: Email address
       placeholder: Your email address...
       class: ''
     agree:
+      type: checkbox
       label: Subscribe to our newsletter?
       placeholder: <em>Yes</em>, I want to subscribe to your newsletter.
       class: ''
   
+  # Extra fields that need to be entered by the user and stored into the database.
+  # You can add as many fields as needed.
+  # Types allowed: text, textare, choice, checkbox
+  #extra_fields:
+  #  name:
+  #    type: text
+  #    label: Name
+  #    placeholder: Your name...
+  #    required: true
+  #    class: ''
+  #  address:
+  #    type: textarea
+  #    label: Address
+  #    placeholder: Your address...
+  #    required: true
+  #    class: ''
+  #  state:
+  #    type: choice
+  #    label: State
+  #    choices: [California, Florida, Alabama]
+  #    required: false
+  #    class: ''
+  #  age_check:
+  #    type: checkbox
+  #    label: 'I am over 18 years old'
+  #    placeholder: Yes, I am over 18 years old, I swear!!
+  #    required: true
+  #    class: ''      
+  #  send_offers:
+  #    type: checkbox
+  #    label: Yes, send me special offers
+  #    placeholder: I want to receive promotions and special offers in my email
+  #    required: false
+  #    class: ''      
+      
+  
+                  
+
+
 
 

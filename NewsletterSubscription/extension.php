@@ -1,5 +1,6 @@
 <?php
 namespace NewsletterSubscription;
+use Symfony\Component\Form\FormBuilder;
 
 use Symfony\Component\Form\Form;
 use Silex\Application;
@@ -156,37 +157,63 @@ class Extension extends \Bolt\BaseExtension
     {
         $form = $this->app['form.factory']->createBuilder('form');
 
-        $fields = $this->config['form']['fields'];
+        // Form standard fields are always required
+        $this->createFormFields($form, $this->config['form']['fields'], true);
 
-        $form
-            ->add('email', 'email',
-                array(
-                        'label' => $fields['email']['label'],
-                        'required' => true,
-                        'constraints' => array(
-                                new Assert\NotBlank()
-                        ),
-                        'attr' => array(
-                                'placeholder' => $fields['email']['placeholder'],
-                                'class' => $fields['email']['class'],
-                        )
-                ));
-
-        $form
-            ->add('agree', 'checkbox',
-                array(
-                        'label' => $fields['agree']['label'],
-                        'required' => true,
-                        'constraints' => array(
-                                new Assert\NotBlank()
-                        ),
-                        'attr' => array(
-                                'placeholder' => $fields['agree']['placeholder'],
-                                'class' => $fields['agree']['class'],
-                        )
-                ));
+        // Form extra fields do not need to be required
+        $this->createFormFields($form, $this->config['form']['extra_fields']);
 
         return $form->getForm();
+    }
+
+    protected function createFormFields(FormBuilder $form, array $fields, $forceRequired = false)
+    {
+
+        foreach ($fields as $name => $field) {
+
+            $options = array();
+
+            if (!empty($field['label'])) {
+                $options['label'] = $field['label'];
+            }
+            if (!empty($field['placeholder'])) {
+                $options['attr']['placeholder'] = $field['placeholder'];
+            }
+            if (!empty($field['class'])) {
+                $options['attr']['class'] = $field['class'];
+            }
+
+            if ($forceRequired || (!empty($field['required']) && $field['required'] == true)) {
+                $options['required'] = true;
+                $options['constraints'][] = new Assert\NotBlank();
+            } else {
+                $options['required'] = false;
+            }
+            if (!empty($field['choices']) && is_array($field['choices'])) {
+                // Make the keys more sensible.
+                $options['choices'] = array();
+                foreach ($field['choices'] as $option) {
+                    $options['choices'][safeString($option)] = $option;
+                }
+            }
+            if (!empty($field['expanded'])) {
+                $options['expanded'] = $field['expanded'];
+            }
+            if (!empty($field['multiple'])) {
+                $options['multiple'] = $field['multiple'];
+            }
+            // Make sure $field has a type, or the form will break.
+            if (empty($field['type'])) {
+                $field['type'] = "text";
+            } elseif ($field['type'] == "email") {
+                $options['constraints'][] = new Assert\Email();
+            }
+
+            $form->add($name, $field['type'], $options);
+
+        }
+
+        return $form;
     }
 
     /**
@@ -280,49 +307,59 @@ class Extension extends \Bolt\BaseExtension
         $ret = array();
         $isNew = false;
 
-        $subscriber = $this->storage->findSubscriber($data['email']);
+        $subscriber = $this->storage->subscriberFind($data['email']);
 
-        // Already subscribed?
-        if ($subscriber) {
-            // Active? (could mean a former subscriber that unsubscribed)
-            if ($subscriber['active']) {
-                // Confirmed?
-                if ($subscriber['confirmed']) {
-                    $ret['error'] = $this->config['messages']['already_subscribed'];
-                    return $ret;
-                }
-            } else {
-                // An unsubscribed subscribed can resubscribe as a new subscriber (...)
-                $old = $subscriber;
-                $subscriber = $this->storage->initSubscriber($data['email']);
-                $subscriber['id'] = $old['id'];
-                $this->storage->updateSubscriber($subscriber);
-                $isNew = true;
-            }
-        } else {
-            // Create subscription
-            $subscriber = $this->storage->insertSubscriber($data['email']);
-            $isNew = true;
+        // Check if the subscriber exists, is active and confirmed
+        if ($subscriber && $subscriber['active'] && $subscriber['confirmed']) {
+            $ret['error'] = $this->config['messages']['already_subscribed'];
+            return $ret;
         }
 
-        $ret['subscriber'] = $subscriber;
+        $db = $this->app['db'];
 
-        // Ask confirmation to user via email
-        $res = $this->mailer->sendUserConfirmationEmail($subscriber);
-        if ($res) {
-            if ($isNew) {
-                $ret['message'] = $this->config['messages']['confirmation_sent'];
+        $db->beginTransaction();
+        try {
+            $isNew = true;
+
+            if ($subscriber) {
+                // Either unactive (=> unsubscribed) or unconfirmed (=> new subscription attempt)
+                // Discard all old information
+                $this->storage->subscriberDelete($subscriber['email']);
+
+                if ($subscriber['active'] && !$subscriber['confirmed']) {
+                    $isNew = false; // Just for notifying a "resend" instead of a "send"
+                }
+            }
+
+            // Create subscription for new subscriber
+            $subscriber = $this->storage->subscriberInsert($data);
+
+            $ret['subscriber'] = $subscriber;
+
+            // Ask confirmation to user via email
+            $res = $this->mailer->sendUserConfirmationEmail($subscriber);
+            if ($res) {
+                if ($isNew) {
+                    $ret['message'] = $this->config['messages']['confirmation_sent'];
+                } else {
+                    $ret['message'] = $this->config['messages']['confirmation_resent'];
+                }
+                // Notify admin if asked
+                if ($this->config['email']['options']['notify_unconfirmed']) {
+                    $this->mailer->sendNotificationEmail($subscriber);
+                }
             } else {
-                $ret['message'] = $this->config['messages']['confirmation_resent'];
+                // Error sending: forces the subscription to be rolled back (because
+                // the user never received the confirmation message so he cannot confirm...)
+                throw new \Exception('Could not send confirmation email');
             }
-            // Notify admin if asked
-            if ($this->config['email']['options']['notify_unconfirmed']) {
-                $this->mailer->sendNotificationEmail($subscriber);
-            }
-        } else {
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollback();
+
             $ret['error'] = $this->config['messages']['error_technical'];
-            // delete the row just inserted
-            $this->storage->deleteSubscriber($subscriber['email']);
+            $this->app['log']->add($e->getMessage(), 2);
         }
 
         return $ret;
@@ -345,8 +382,9 @@ class Extension extends \Bolt\BaseExtension
             return $ret;
         }
 
+        $subscriber = $this->storage->subscriberFind($email);
+
         // Bad email?
-        $subscriber = $this->storage->findSubscriber($email);
         if (!$subscriber) {
             $ret['error'] = $this->config['messages']['cannot_confirm'];
             return $ret;
@@ -364,23 +402,33 @@ class Extension extends \Bolt\BaseExtension
             return $ret;
         }
 
-        // At last, confirm him
-        $subscriber['confirmed'] = true;
-        $subscriber['dateconfirmed'] = date('Y-m-d H:i:s');
-        $this->storage->updateSubscriber($subscriber);
+        $db = $this->app['db'];
 
-        // Send confirmation email
-        $res = $this->mailer->sendUserConfirmedEmail($subscriber);
-        if ($res) {
-            $ret['message'] = $this->config['messages']['confirmed'];
-            // Notify admin
-            $this->mailer->sendNotificationEmail($subscriber);
-        } else {
+        $db->beginTransaction();
+        try {
+            // At last, confirm him
+            $subscriber['confirmed'] = true;
+            $subscriber['dateconfirmed'] = date('Y-m-d H:i:s');
+            $this->storage->subscriberUpdate($subscriber);
+
+            // Send confirmation email
+            $res = $this->mailer->sendUserConfirmedEmail($subscriber);
+            if ($res) {
+                $ret['message'] = $this->config['messages']['confirmed'];
+                // Notify admin
+                $this->mailer->sendNotificationEmail($subscriber);
+            } else {
+                // Error sending: forces the confirmation to be rolled back (because
+                // the user never received the "confirmed" message so he cannot know it is confirmed...)
+                throw new \Exception('Could not send "confirmed" email');
+            }
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollback();
+
             $ret['error'] = $this->config['messages']['error_technical'];
-            // Unconfirm the confirmation just set
-            $subscriber['confirmed'] = false;
-            $subscriber['dateconfirmed'] = null;
-            $this->storage->updateSubscriber($subscriber);
+            $this->app['log']->add($e->getMessage(), 2);
         }
 
         return $ret;
@@ -404,7 +452,7 @@ class Extension extends \Bolt\BaseExtension
         }
 
         // Bad email?
-        $subscriber = $this->storage->findSubscriber($email);
+        $subscriber = $this->storage->subscriberFind($email);
         if (!$subscriber) {
             $ret['error'] = $this->config['messages']['cannot_unsubscribe'];
             return $ret;
@@ -431,7 +479,7 @@ class Extension extends \Bolt\BaseExtension
         // At last, unsubscribe him
         $subscriber['active'] = false;
         $subscriber['dateunsubscribed'] = date('Y-m-d H:i:s');
-        $this->storage->updateSubscriber($subscriber);
+        $this->storage->subscriberUpdate($subscriber);
 
         // Send unsubscription email
         $res = $this->mailer->sendUserUnsubscriptionEmail($subscriber);
@@ -446,7 +494,7 @@ class Extension extends \Bolt\BaseExtension
             // Undo the unsubscription just set
             $subscriber['active'] = false;
             $subscriber['dateunsubscribed'] = null;
-            $this->storage->updateSubscriber($subscriber);
+            $this->storage->subscriberUpdate($subscriber);
         }
 
         return $ret;
@@ -469,7 +517,7 @@ class Extension extends \Bolt\BaseExtension
             return;
         }
 
-        $subscribers = $this->storage->findAllSubscribers();
+        $subscribers = $this->storage->subscriberFindAll();
 
         if (!$subscribers) {
             // Nothing to do
@@ -481,13 +529,35 @@ class Extension extends \Bolt\BaseExtension
 
         $lines = array();
 
-        // Headers
-        $keys = array_keys($subscribers[0]);
+        // Construct headers
+
+        // - First, the subscribers fields minus 'extra_fields'
+        $keys = array_flip(array_keys($subscribers[0]));
+        unset($keys['extra_fields']);
+        $keys = array_flip($keys);
+
+        // - Then, the 'extra_fields' names
+        if (isset($this->config['form']['extra_fields'])) {
+            $keys = array_merge($keys, array_keys($this->config['form']['extra_fields']));
+        }
+
+        // - Last, the 'unsubscribe' link
         $keys[] = 'unsubscribe_link';
+
         $lines[] = $quote . implode($quote . $sep . $quote, $keys) . $quote;
 
         // Records
         foreach ($subscribers as $subscriber) {
+
+            $extraFields = $subscriber['extra_fields'];
+            unset($subscriber['extra_fields']);
+
+            if (isset($this->config['form']['extra_fields'])) {
+                foreach ($extraFields as $field) {
+                    $subscriber[$field['name']] = $field['value'];
+                }
+            }
+
             // Add unsubscribe link when it does make sense
             $subscriber['unsubscribe_link'] = '';
             if ($subscriber['confirmed'] && $subscriber['active']) {
