@@ -1,5 +1,6 @@
 <?php
 namespace NewsletterSubscription;
+
 use Bolt\Application;
 
 /**

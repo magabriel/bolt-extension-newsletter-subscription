@@ -1,5 +1,6 @@
 <?php
 namespace NewsletterSubscription;
+
 use Bolt\Application;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;

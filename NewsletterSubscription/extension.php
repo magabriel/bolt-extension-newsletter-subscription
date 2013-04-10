@@ -1,7 +1,7 @@
 <?php
 namespace NewsletterSubscription;
-use Symfony\Component\Form\FormBuilder;
 
+use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\Form;
 use Silex\Application;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -32,7 +32,7 @@ class Extension extends \Bolt\BaseExtension
                 'description' => "Allow your users to subscribe to your newsletter with two-phase confirmation.",
                 'author' => "Miguel Angel Gabriel",
                 'link' => "http://bolt.cm",
-                'version' => "1.0",
+                'version' => "0.2",
                 'type' => "Twig function",
                 'first_releasedate' => "2013-04-01",
                 'latest_releasedate' => "2013-04-01",
@@ -419,8 +419,8 @@ class Extension extends \Bolt\BaseExtension
                 $this->mailer->sendNotificationEmail($subscriber);
             } else {
                 // Error sending: forces the confirmation to be rolled back (because
-                // the user never received the "confirmed" message so he cannot know it is confirmed...)
-                throw new \Exception('Could not send "confirmed" email');
+                // the user never received the "confirmed" message so he cannot know it done...)
+                throw new \Exception(sprintf('Could not send "confirmed" email to "%s"', $subscriber['email']));
             }
 
             $db->commit();
@@ -476,25 +476,35 @@ class Extension extends \Bolt\BaseExtension
             return $ret;
         }
 
-        // At last, unsubscribe him
-        $subscriber['active'] = false;
-        $subscriber['dateunsubscribed'] = date('Y-m-d H:i:s');
-        $this->storage->subscriberUpdate($subscriber);
+        $db = $this->app['db'];
 
-        // Send unsubscription email
-        $res = $this->mailer->sendUserUnsubscriptionEmail($subscriber);
-        if ($res) {
-            $ret['message'] = $this->config['messages']['unsubscribed'];
-            // Notify admin if asked
-            if ($this->config['email']['options']['notify_unsubscribed']) {
-                $this->mailer->sendNotificationEmail($subscriber);
-            }
-        } else {
-            $ret['error'] = $this->config['messages']['error_technical'];
-            // Undo the unsubscription just set
+        $db->beginTransaction();
+        try {
+            // At last, unsubscribe him
             $subscriber['active'] = false;
-            $subscriber['dateunsubscribed'] = null;
+            $subscriber['dateunsubscribed'] = date('Y-m-d H:i:s');
             $this->storage->subscriberUpdate($subscriber);
+
+            // Send unsubscription email
+            $res = $this->mailer->sendUserUnsubscriptionEmail($subscriber);
+            if ($res) {
+                $ret['message'] = $this->config['messages']['unsubscribed'];
+                // Notify admin if asked
+                if ($this->config['email']['options']['notify_unsubscribed']) {
+                    $this->mailer->sendNotificationEmail($subscriber);
+                }
+            } else {
+               // Error sending: forces the unsubscription to be rolled back (because
+               // the user never received the "unsubscribed" message so he cannot know it done...)
+                throw new \Exception(sprintf('Could not send "unsubscribed" email to "%s"', $subscriber['email']));
+            }
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollback();
+
+            $ret['error'] = $this->config['messages']['error_technical'];
+            $this->app['log']->add($e->getMessage(), 2);
         }
 
         return $ret;
