@@ -118,20 +118,23 @@ class Extension extends \Bolt\BaseExtension
      */
     protected function processGetActions()
     {
-        $urlArgs = $this->app->request->query;
+        $urlArgs = $this->getUrlArgs();
 
         $handled = false;
 
-        if ($urlArgs->get('confirm')) {
-            $results = $this->confirmSubscriber($urlArgs->get('confirm'), $urlArgs->get('email'));
+        if (isset($urlArgs['confirm'])) {
+            $email = isset($urlArgs['email']) ? $urlArgs['email'] : '';
+            $results = $this->confirmSubscriber($urlArgs['confirm'], $email);
             $handled = true;
 
-        } elseif ($urlArgs->get('unsubscribe')) {
-            $results = $this->unsubscribeSubscriber($urlArgs->get('unsubscribe'), $urlArgs->get('email'));
+        } elseif (isset($urlArgs['unsubscribe'])) {
+            $email = isset($urlArgs['email']) ? $urlArgs['email'] : '';
+            $results = $this->unsubscribeSubscriber($urlArgs['unsubscribe'], $email);
             $handled = true;
 
-        } elseif ($urlArgs->get('adminaction') == 'download') {
-            $this->downloadSubscribersFile($urlArgs->get('secret'));
+        } elseif (isset($urlArgs['adminaction']) && $urlArgs['adminaction'] == 'download') {
+            $secret = isset($urlArgs['secret']) ? $urlArgs['secret'] : '';
+            $this->downloadSubscribersFile($secret);
             $handled = true;
         }
 
@@ -581,6 +584,34 @@ class Extension extends \Bolt\BaseExtension
         $data = implode("\n", $lines);
 
         \util::force_download('subcribers.csv', $data);
+    }
+
+    /**
+     * Get the arguments in the current url
+     *
+     * @return array
+     */
+    protected function getUrlArgs()
+    {
+        $parts = explode('?', $this->app['paths']['currenturl']);
+        if (!isset($parts[1])) {
+            return array();
+        }
+
+        $args = explode('&', $parts[1]);
+
+        $ret = array();
+        foreach ($args as $arg)
+        {
+            $parts = explode('=', $arg);
+            if (isset($parts[1])) {
+                $ret[$parts[0]] = $parts[1];
+            } else {
+                $ret[$parts[0]] = '';
+            }
+        }
+
+        return $ret;
     }
 
     /**

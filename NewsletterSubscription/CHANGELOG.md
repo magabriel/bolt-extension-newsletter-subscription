@@ -8,3 +8,7 @@ V0.1:
 V0.2:
 
 - Added custom extra fields to subscribe form.
+
+V0.2.1:
+
+- Bugfix.
