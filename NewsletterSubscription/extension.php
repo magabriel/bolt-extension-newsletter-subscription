@@ -32,7 +32,7 @@ class Extension extends \Bolt\BaseExtension
                 'description' => "Allow your users to subscribe to your newsletter with two-phase confirmation.",
                 'author' => "Miguel Angel Gabriel",
                 'link' => "http://bolt.cm",
-                'version' => "0.2.1",
+                'version' => "0.2.2",
                 'type' => "Twig function",
                 'first_releasedate' => "2013-04-01",
                 'latest_releasedate' => "2013-04-01",
@@ -584,6 +584,9 @@ class Extension extends \Bolt\BaseExtension
         $data = implode("\n", $lines);
 
         \util::force_download('subcribers.csv', $data);
+
+        // Exit the script to avoid junk into the downloaded data!!!
+        exit;
     }
 
     /**
