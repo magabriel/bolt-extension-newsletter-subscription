@@ -32,7 +32,7 @@ class Extension extends \Bolt\BaseExtension
                 'description' => "Allow your users to subscribe to your newsletter with two-phase confirmation.",
                 'author' => "Miguel Angel Gabriel",
                 'link' => "http://bolt.cm",
-                'version' => "0.2",
+                'version' => "0.2.1",
                 'type' => "Twig function",
                 'first_releasedate' => "2013-04-01",
                 'latest_releasedate' => "2013-04-01",
