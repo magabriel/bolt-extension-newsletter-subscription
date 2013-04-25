@@ -11,4 +11,8 @@ V0.2:
 
 V0.2.1:
 
-- Bugfix.
+- Bugfix: Bug #1.
+
+V0.2.2:
+
+- Bugfix: Avoid extra content when downloading subscribers file.
