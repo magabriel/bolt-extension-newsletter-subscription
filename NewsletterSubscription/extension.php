@@ -8,6 +8,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 require_once "src/Storage.php";
 require_once "src/Mailer.php";
+require_once "src/Tools.php";
 
 /**
  * Newsletter Subscription Extension
@@ -57,7 +58,10 @@ class Extension extends \Bolt\BaseExtension
 
         $this->checkDatabase();
 
-        $this->addTwigFunction('newslettersubscription', 'newsletterSubscription');
+        $this->addTwigFunction('newslettersubscription', 'newsletterSubscriptionFunction');
+
+        // Note that the widget cannot use caching to be able to process download requests
+        $this->addWidget('dashboard', 'right_first', 'newsletterSubscriptionWidget', null, false, -1);
     }
 
     /**
@@ -81,7 +85,7 @@ class Extension extends \Bolt\BaseExtension
      *
      * @return \Twig_Markup
      */
-    public function newsletterSubscription()
+    public function newsletterSubscriptionFunction()
     {
         $html = '';
 
@@ -112,13 +116,46 @@ class Extension extends \Bolt\BaseExtension
     }
 
     /**
+     * Dashboard widget contents
+     *
+     * @return \Twig_Markup
+     */
+    public function newsletterSubscriptionWidget()
+    {
+        // Process url arguments
+        $urlArgs = \Tools::getUrlArgs($this->app['paths']['currenturl']);
+
+        if (isset($urlArgs['adminaction']) && $urlArgs['adminaction'] == 'download') {
+            $secret = isset($urlArgs['secret']) ? $urlArgs['secret'] : '';
+            $this->downloadSubscribersFile($secret);
+            // Will never reach this if successful
+            $html = '<p>Invalid URL</p>';
+            return new \Twig_Markup($html, 'UTF-8');
+        }
+
+        // Render widget
+
+        $stats = $this->storage->subscriberStats();
+
+        $this->app['twig.loader.filesystem']->addPath(__DIR__, 'NewsletterSubscription');
+        $template = $this->config['widget_template'];
+
+        $html = $this->app['twig']->render("@NewsletterSubscription/".$template, array(
+                'stats' => $stats,
+                "secret" => isset($this->config['admin_secret']) ? $this->config['admin_secret'] : '',
+        ));
+
+        return new \Twig_Markup($html, 'UTF-8');
+    }
+
+    /**
      * Carry out the actions requested via a 'GET' method
      *
      * @return string HTML to show (blank = not handled)
      */
     protected function processGetActions()
     {
-        $urlArgs = $this->getUrlArgs();
+        $urlArgs = \Tools::getUrlArgs($this->app['paths']['currenturl']);
 
         $handled = false;
 
@@ -277,7 +314,7 @@ class Extension extends \Bolt\BaseExtension
 
         // Load defaults and merge into config
         $this->defaults = $this->getConfigDefaults();
-        $this->config = $this->mergeConfiguration($this->defaults, $this->config);
+        $this->config = \Tools::mergeConfiguration($this->defaults, $this->config);
     }
 
     /**
@@ -589,55 +626,5 @@ class Extension extends \Bolt\BaseExtension
         exit;
     }
 
-    /**
-     * Get the arguments in the current url
-     *
-     * @return array
-     */
-    protected function getUrlArgs()
-    {
-        $parts = explode('?', $this->app['paths']['currenturl']);
-        if (!isset($parts[1])) {
-            return array();
-        }
-
-        $args = explode('&', $parts[1]);
-
-        $ret = array();
-        foreach ($args as $arg)
-        {
-            $parts = explode('=', $arg);
-            if (isset($parts[1])) {
-                $ret[$parts[0]] = $parts[1];
-            } else {
-                $ret[$parts[0]] = '';
-            }
-        }
-
-        return $ret;
-    }
-
-    /**
-     * Merge configuration array with defaults (recursive)
-     * @see http://www.php.net/manual/en/function.array-merge-recursive.php#92195
-     *
-     * @param array $defaults
-     * @param array $configuration
-     * @return array merged configuration with defaults
-     */
-    protected function mergeConfiguration(array $defaults, array $configuration)
-    {
-        $merged = $defaults;
-
-        foreach ($configuration as $key => &$value) {
-            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
-                $merged[$key] = $this->mergeConfiguration($merged[$key], $value);
-            } else {
-                $merged[$key] = $value;
-            }
-        }
-
-        return $merged;
-    }
 }
 

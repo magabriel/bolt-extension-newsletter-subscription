@@ -74,7 +74,6 @@ class Storage
         $subscribersTable = $schema->createTable($this->prefix . 'subscribers');
 
         $subscribersTable->addColumn('id', 'integer', array(
-                         'unsigned' => true,
                          'autoincrement' => true
             ));
         $subscribersTable->addColumn('email', 'string', array(
@@ -112,7 +111,6 @@ class Storage
         $extraFieldsTable = $schema->createTable($this->prefix . 'extra_fields');
 
         $extraFieldsTable->addColumn('id', 'integer', array(
-                         'unsigned' => true,
                          'autoincrement' => true
             ));
         $extraFieldsTable->addColumn('subscribers_id', 'integer', array(
@@ -228,6 +226,37 @@ class Storage
 
         return $data;
 
+    }
+
+    /**
+     * Retrieve statistics
+     * @return array[stats]
+     */
+    public function subscriberStats()
+    {
+        $db = $this->app['db'];
+
+        $stats = array();
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s', $this->prefix . 'subscribers
+                          WHERE confirmed = 1 AND active = 1)');
+        $stats['confirmed'] = $db->fetchColumn($query);
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s', $this->prefix . 'subscribers
+                          WHERE confirmed <> 1 AND active = 1)');
+        $stats['unconfirmed'] = $db->fetchColumn($query);
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s', $this->prefix . 'subscribers
+                          WHERE active <> 1)');
+        $stats['unsubscribed'] = $db->fetchColumn($query);
+
+
+        $stats['total'] = $stats['confirmed'] + $stats['unconfirmed'];
+
+        return $stats;
     }
 
     /**
