@@ -13,10 +13,10 @@ class Mailer
     protected $config = array();
     protected $app;
 
-    public function __construct($app, array $config)
+    public function __construct($app)
     {
         $this->app = $app;
-        $this->config = $config;
+        $this->config = $this->app['nls.config'];
     }
 
     public function sendUserConfirmationEmail(array $data)

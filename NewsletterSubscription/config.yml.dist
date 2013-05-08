@@ -2,9 +2,11 @@
 
 # Files to use. They can be safely overwriten by copying them with another name inside the extension directory 
 # Example-> stylesheet: custom/mystylesheet.css 
-stylesheet:     assets/nls.css          # Stylesheets used
-template:       assets/nls_form.twig    # Template with the subscribe form
-template_extra: assets/nls_extra.twig   # Extra template used to show messages
+stylesheet:      assets/nls.css          # Stylesheets used
+template:        assets/nls_form.twig    # Template with the subscribe form
+template_extra:  assets/nls_extra.twig   # Extra template used to show messages
+
+widget_template: assets/nls_widget.twig  # Template to show dashboard widget
 
 # Text of the submit button
 button_text:    Send 
