@@ -25,8 +25,8 @@ class Storage
     {
         $this->app = $app;
 
-        $this->prefix = isset($this->app['config']['general']['database']['prefix']) ?
-                              $this->app['config']['general']['database']['prefix'] : "bolt_";
+        $this->prefix = isset($this->app['config']['general']['database']['prefix']) ? $this
+                ->app['config']['general']['database']['prefix'] : "bolt_";
 
         if ($this->prefix[strlen($this->prefix) - 1] != "_") {
             $this->prefix .= "_";
@@ -62,6 +62,7 @@ class Storage
         $currentTables = $this->getTableObjects();
 
         $dboptions = getDBOptions($this->app['config']);
+
         /** @var $schemaManager AbstractSchemaManager */
         $schemaManager = $this->app['db']->getSchemaManager();
 
@@ -69,12 +70,14 @@ class Storage
 
         $tables = array();
 
-        // Define table subscribers
+        /*
+         * Define table subscribers
+         */
         $schema = new \Doctrine\DBAL\Schema\Schema();
         $subscribersTable = $schema->createTable($this->prefix . 'subscribers');
 
+        // Columns
         $subscribersTable->addColumn('id', 'integer', array(
-                         'unsigned' => true,
                          'autoincrement' => true
             ));
         $subscribersTable->addColumn('email', 'string', array(
@@ -94,7 +97,12 @@ class Storage
         $subscribersTable->addColumn('dateunsubscribed', 'datetime', array(
                          'notNull' => false
             ));
+        $subscribersTable->addColumn('unsubscribe_link', 'string', array(
+                          'length' => 255,
+                          'notNull' => false
+            ));
 
+        // Keys and indexes
         $subscribersTable->setPrimaryKey(array(
                          'id'
             ));
@@ -107,12 +115,14 @@ class Storage
 
         $tables[] = $subscribersTable;
 
-        // Define table extra_fields
+        /*
+         * Define table extra_fields
+         */
         $schema = new \Doctrine\DBAL\Schema\Schema();
         $extraFieldsTable = $schema->createTable($this->prefix . 'extra_fields');
 
+        // Columns
         $extraFieldsTable->addColumn('id', 'integer', array(
-                         'unsigned' => true,
                          'autoincrement' => true
             ));
         $extraFieldsTable->addColumn('subscribers_id', 'integer', array(
@@ -126,17 +136,18 @@ class Storage
                          'notNull' => false
             ));
 
+        // Keys and indexes
         $extraFieldsTable->setPrimaryKey(array(
                          'id'
             ));
-        $extraFieldsTable
-            ->addForeignKeyConstraint($subscribersTable, array(
-                    'subscribers_id'
-            ), array(
-                    'id'
-            ), array(
-                    "onDelete" => "CASCADE"
-            ));
+        $extraFieldsTable->addForeignKeyConstraint($subscribersTable, array(
+                         'subscribers_id'
+                ), array(
+                         'id'
+                ), array(
+                         "onDelete" => "CASCADE"
+                ));
+
         $tables[] = $extraFieldsTable;
 
         /** @var $table Table */
@@ -146,8 +157,8 @@ class Storage
 
                 /** @var $platform AbstractPlatform */
                 $platform = $this->app['db']->getDatabasePlatform();
-                $queries = $platform
-                    ->getCreateTableSQL($table, AbstractPlatform::CREATE_INDEXES + AbstractPlatform::CREATE_FOREIGNKEYS);
+                $queries = $platform->getCreateTableSQL($table,
+                            AbstractPlatform::CREATE_INDEXES + AbstractPlatform::CREATE_FOREIGNKEYS);
                 $queries = implode("; ", $queries);
                 $this->app['db']->query($queries);
 
@@ -202,7 +213,8 @@ class Storage
                 'confirmed' => false,
                 'dateconfirmed' => null,
                 'active' => true,
-                'dateunsubscribed' => null
+                'dateunsubscribed' => null,
+                'unsubscribe_link' => null
         );
 
         return $data;
@@ -228,6 +240,37 @@ class Storage
 
         return $data;
 
+    }
+
+    /**
+     * Retrieve statistics
+     * @return array[stats]
+     */
+    public function subscriberStats()
+    {
+        $db = $this->app['db'];
+
+        $stats = array();
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s', $this->prefix . 'subscribers
+                          WHERE confirmed = 1 AND active = 1)');
+        $stats['confirmed'] = $db->fetchColumn($query);
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s',
+            $this->prefix . 'subscribers
+                          WHERE confirmed <> 1 AND active = 1)');
+        $stats['unconfirmed'] = $db->fetchColumn($query);
+
+        $query = sprintf('(SELECT count(*)
+                           FROM %s', $this->prefix . 'subscribers
+                          WHERE active <> 1)');
+        $stats['unsubscribed'] = $db->fetchColumn($query);
+
+        $stats['total'] = $stats['confirmed'] + $stats['unconfirmed'];
+
+        return $stats;
     }
 
     /**
@@ -280,7 +323,8 @@ class Storage
             unset($data['extra_fields']);
         }
 
-        return $db->update($this->prefix . 'subscribers', $data, array(
+        return $db
+            ->update($this->prefix . 'subscribers', $data, array(
                     'email' => $data['email']
             ));
     }

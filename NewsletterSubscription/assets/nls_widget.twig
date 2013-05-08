@@ -1,0 +1,75 @@
+<div class="widget-ns">
+
+    <button type="button" class="btn btn-mini btn-show-widget" data-toggle="collapse" data-target="#widget-ns-body">
+        <i class="icon-chevron-right"></i>
+    </button>
+
+    <h2>Newsletter Subscription</h2>
+
+    <div id="widget-ns-body" class="collapse">
+
+        <table class="stats table table-bordered table-condensed">
+            <tr>
+                <th>Confirmed</th>
+                <th>Unconfirmed</th>
+                <th>Unsubscribed</th>
+            </tr>
+            <tr>
+                <td>{{ stats.confirmed}}</td>
+                <td>{{ stats.unconfirmed }}</td>
+                <td>{{ stats.unsubscribed }}</td>
+            </tr>
+        </table>
+
+        {% if stats.total > 0 %}
+            {% if secret is not defined or secret == secret_default %}
+                <p>Please change the <em>admin_secret</em> option in config.yml to activate download link.</p>
+            {% else %}
+                <a class="btn" href="{{ paths.canonicalurl }}?adminaction=download&secret={{ secret }}">Download subscribers list</a>
+            {% endif %}
+        {% endif %}
+
+    </div>
+
+</div>
+
+<style>
+    .widget-ns ul.nav li:before {
+        content: none;
+    }
+
+    .widget-ns h2 {
+        display: inline-block;
+        margin-bottom: 0;
+    }
+
+    .widget-ns .datatime {
+        float: right;
+    }
+
+    .widget-ns table.stats {
+        background: #fff;
+    }
+
+    .widget-ns table.stats th, .widget-ns table.stats td {
+        text-align: center;
+    }
+
+</style>
+
+<script type="text/javascript">
+    jQuery(function($) {
+        $('.widget-ns .btn-show-widget').click(function (e) {
+            me = this;
+            setTimeout(function(){
+            	collapsed = $(me).hasClass('collapsed');
+                $(me).find('i').removeClass().addClass(collapsed ? 'icon-chevron-right' : 'icon-chevron-down');
+            }, 100);
+
+        });
+    });
+</script>
+
+</div>
+
+</div>
