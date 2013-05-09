@@ -1,5 +1,9 @@
 # Changelog
 
+V0.3.1:
+
+- Fix helpers registration.
+
 V0.3:
 
 - Added dashboard widget (this requires Bolt 1.1, so please stick with V0.2.x of the extension till it gets released).
