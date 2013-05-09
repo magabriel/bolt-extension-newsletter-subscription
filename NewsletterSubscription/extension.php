@@ -66,23 +66,23 @@ class Extension extends \Bolt\BaseExtension
      */
     protected function setUp()
     {
-        $extension = $this;
-
         // Register some values to use around
         $this->app['nls.config'] = $this->config;
         $this->app['nls.defaults'] = $this->defaults;
 
+        $app = $this->app;
+
         // Register some helper objects
-        $this->app['nls.mailer'] = $this->app->share(function() use ($extension) {
-            return new Mailer($extension->app);
+        $this->app['nls.mailer'] = $this->app->share(function() use ($app) {
+            return new Mailer($app);
         });
 
-        $this->app['nls.storage'] = $this->app->share(function() use ($extension) {
-            return new Storage($extension->app);
+        $this->app['nls.storage'] = $this->app->share(function() use ($app) {
+            return new Storage($app);
         });
 
-        $this->app['nls.subscribers_file'] = $this->app->share(function () use ($extension) {
-            return new SubscribersFile($extension->app);
+        $this->app['nls.subscribers_file'] = $this->app->share(function () use ($app) {
+            return new SubscribersFile($app);
         });
 
     }
