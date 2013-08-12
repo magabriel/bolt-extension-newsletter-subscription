@@ -1,5 +1,9 @@
 # Changelog
 
+V0.3.2: 
+
+- Fixes.
+
 V0.3.1:
 
 - Fix helpers registration.
