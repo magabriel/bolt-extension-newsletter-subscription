@@ -1,6 +1,8 @@
 # Changelog
 
-V0.3.2: WIP
+V0.3.2: 
+
+- Fixes.
 
 V0.3.1:
 

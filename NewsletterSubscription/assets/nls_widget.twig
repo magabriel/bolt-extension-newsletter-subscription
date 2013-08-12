@@ -31,45 +31,41 @@
 
     </div>
 
-</div>
+    <style>
+        .widget-ns ul.nav li:before {
+            content: none;
+        }
 
-<style>
-    .widget-ns ul.nav li:before {
-        content: none;
-    }
+        .widget-ns h2 {
+            display: inline-block;
+            margin-bottom: 0;
+        }
 
-    .widget-ns h2 {
-        display: inline-block;
-        margin-bottom: 0;
-    }
+        .widget-ns .datatime {
+            float: right;
+        }
 
-    .widget-ns .datatime {
-        float: right;
-    }
+        .widget-ns table.stats {
+            background: #fff;
+        }
 
-    .widget-ns table.stats {
-        background: #fff;
-    }
+        .widget-ns table.stats th, .widget-ns table.stats td {
+            text-align: center;
+        }
 
-    .widget-ns table.stats th, .widget-ns table.stats td {
-        text-align: center;
-    }
+    </style>
 
-</style>
+    <script type="text/javascript">
+        jQuery(function($) {
+            $('.widget-ns .btn-show-widget').click(function (e) {
+                me = this;
+                setTimeout(function(){
+                	collapsed = $(me).hasClass('collapsed');
+                    $(me).find('i').removeClass().addClass(collapsed ? 'icon-chevron-right' : 'icon-chevron-down');
+                }, 100);
 
-<script type="text/javascript">
-    jQuery(function($) {
-        $('.widget-ns .btn-show-widget').click(function (e) {
-            me = this;
-            setTimeout(function(){
-            	collapsed = $(me).hasClass('collapsed');
-                $(me).find('i').removeClass().addClass(collapsed ? 'icon-chevron-right' : 'icon-chevron-down');
-            }, 100);
-
+            });
         });
-    });
-</script>
-
-</div>
+    </script>
 
 </div>
