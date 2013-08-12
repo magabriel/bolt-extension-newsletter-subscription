@@ -22,7 +22,7 @@ class NewsletterSubscriptionFunction
         $this->config = $this->app['nls.config'];
 
         // Set Twig path
-        $this->app['twig.loader.filesystem']->addPath(__DIR__.'/../');
+        $this->app['twig.loader.filesystem']->addPath(__DIR__ . '/../');
     }
 
     public function process()
@@ -84,8 +84,9 @@ class NewsletterSubscriptionFunction
 
         if ($handled) {
             $html = $this->app['twig']
-                ->render($this->config['template_extra'],
-                    array(
+                         ->render(
+                         $this->config['template_extra'],
+                         array(
                             "message" => isset($results['message']) ? $results['message'] : '',
                             "error" => isset($results['error']) ? $results['error'] : ''
                     ));
@@ -188,15 +189,16 @@ class NewsletterSubscriptionFunction
         }
 
         $formhtml = $this->app['twig']
-            ->render($this->config['template'],
-                array(
-                        "form" => $form->createView(),
-                        "message" => isset($results['message']) ? $results['message'] : '',
-                        "error" => isset($results['error']) ? $results['error'] : '',
-                        "showform" => $showForm,
-                        "button_text" => $this->config['button_text'],
-                        "secret" => isset($this->config['admin_secret']) ? $this->config['admin_secret'] : '',
-                        "secret_default" => $this->app['nls.defaults']['admin_secret']
+                         ->render(
+                         $this->config['template'],
+                         array(
+                         "form" => $form->createView(),
+                         "message" => isset($results['message']) ? $results['message'] : '',
+                         "error" => isset($results['error']) ? $results['error'] : '',
+                         "showform" => $showForm,
+                         "button_text" => $this->config['button_text'],
+                         "secret" => isset($this->config['admin_secret']) ? $this->config['admin_secret'] : '',
+                         "secret_default" => $this->app['nls.defaults']['admin_secret']
                 ));
 
         return $formhtml;
@@ -315,8 +317,11 @@ class NewsletterSubscriptionFunction
             // At last, confirm him
             $subscriber['confirmed'] = true;
             $subscriber['dateconfirmed'] = date('Y-m-d H:i:s');
-            $subscriber['unsubscribe_link'] = sprintf('%s?unsubscribe=%s&email=%s', $this->app['paths']['canonicalurl'],
-                    $subscriber['confirmkey'], $subscriber['email']);
+            $subscriber['unsubscribe_link'] = sprintf(
+                '%s?unsubscribe=%s&email=%s',
+                $this->app['paths']['canonicalurl'],
+                $subscriber['confirmkey'],
+                $subscriber['email']);
 
             $this->app['nls.storage']->subscriberUpdate($subscriber);
 

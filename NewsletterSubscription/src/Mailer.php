@@ -21,45 +21,48 @@ class Mailer
 
     public function sendUserConfirmationEmail(array $data)
     {
-        $res = $this
-            ->sendEmail($this->config['email']['messages']['confirmation']['subject'],
+        $res = $this->sendEmail(
+                $this->config['email']['messages']['confirmation']['subject'],
                 array(
                         $this->config['email']['sender']['email'] => $this->config['email']['sender']['name']
                 ),
                 array(
                         $data['email'] => $data['email']
                 ),
-                $this->config['email']['messages']['confirmation']['template'], $data);
+                $this->config['email']['messages']['confirmation']['template'],
+                $data);
 
         return $res;
     }
 
     public function sendUserUnsubscriptionEmail(array $data)
     {
-        $res = $this
-            ->sendEmail($this->config['email']['messages']['unsubscribed']['subject'],
+        $res = $this->sendEmail(
+                $this->config['email']['messages']['unsubscribed']['subject'],
                 array(
                         $this->config['email']['sender']['email'] => $this->config['email']['sender']['name']
                 ),
                 array(
                         $data['email'] => $data['email']
                 ),
-                $this->config['email']['messages']['unsubscribed']['template'], $data);
+                $this->config['email']['messages']['unsubscribed']['template'],
+                $data);
 
         return $res;
     }
 
     public function sendUserConfirmedEmail(array $data)
     {
-        $res = $this
-            ->sendEmail($this->config['email']['messages']['confirmed']['subject'],
+        $res = $this->sendEmail(
+                $this->config['email']['messages']['confirmed']['subject'],
                 array(
                         $this->config['email']['sender']['email'] => $this->config['email']['sender']['name']
                 ),
                 array(
                         $data['email'] => $data['email']
                 ),
-                $this->config['email']['messages']['confirmed']['template'], $data);
+                $this->config['email']['messages']['confirmed']['template'],
+                $data);
 
         return $res;
     }
@@ -104,12 +107,16 @@ class Mailer
         // Add fields information to data
         $data['fields'] = $fieldsData;
 
-        $res = $this
-            ->sendEmail($subject, array(
+        $res = $this->sendEmail(
+                $subject,
+                array(
                         $this->config['email']['sender']['email'] => $this->config['email']['sender']['name']
-                ), array(
+                ),
+                array(
                         $this->config['email']['notify_to']['email'] => $this->config['email']['notify_to']['name']
-                ), $this->config['email']['messages']['notification']['template'], $data);
+                ),
+                $this->config['email']['messages']['notification']['template'],
+                $data);
 
         return $res;
     }
