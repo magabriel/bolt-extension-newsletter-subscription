@@ -72,7 +72,7 @@ class SubscribersFile
 
             if (isset($this->config['form']['extra_fields'])) {
                 foreach ($extraFields as $field) {
-                    $subscriber[$field['name']] = str_replace('"', '""', $field['value']);
+                    $subscriber[$field['name']] = str_replace($quote, $quote.$quote, $field['value']);
                 }
             }
             $lines[] = $quote . implode($quote . $sep . $quote, $subscriber) . $quote;
