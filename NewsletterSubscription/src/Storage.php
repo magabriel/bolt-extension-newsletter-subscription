@@ -25,8 +25,7 @@ class Storage
     {
         $this->app = $app;
 
-        $this->prefix = isset($this->app['config']['general']['database']['prefix']) ? $this
-                ->app['config']['general']['database']['prefix'] : "bolt_";
+        $this->prefix = $this->app['config']->get('general/database/prefix', "bolt_");
 
         if ($this->prefix[strlen($this->prefix) - 1] != "_") {
             $this->prefix .= "_";
@@ -61,7 +60,7 @@ class Storage
 
         $currentTables = $this->getTableObjects();
 
-        $dboptions = getDBOptions($this->app['config']);
+        //$dboptions = getDBOptions($this->app['config']);
 
         /** @var $schemaManager AbstractSchemaManager */
         $schemaManager = $this->app['db']->getSchemaManager();
