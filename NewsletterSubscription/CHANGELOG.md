@@ -1,5 +1,9 @@
 # Changelog
 
+V0.3.3:
+
+- Fixed compatibility issue with Bolt 1.3.
+
 V0.3.2: 
 
 - Fixes.

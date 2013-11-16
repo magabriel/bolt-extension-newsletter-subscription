@@ -31,12 +31,12 @@ class Extension extends \Bolt\BaseExtension
                 'description' => "Allow your users to subscribe to your newsletter with two-phase confirmation.",
                 'author' => "Miguel Angel Gabriel",
                 'link' => "http://bolt.cm",
-                'version' => "0.2.2",
+                'version' => "0.3.3",
                 'type' => "Twig function",
                 'first_releasedate' => "2013-04-01",
-                'latest_releasedate' => "2013-04-01",
-                'required_bolt_version' => "1.0",
-                'highest_bolt_version' => "1.1",
+                'latest_releasedate' => "2013-11-13",
+                'required_bolt_version' => "1.3",
+                'highest_bolt_version' => "1.3",
         );
 
         return $data;
