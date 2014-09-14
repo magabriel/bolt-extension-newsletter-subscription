@@ -109,7 +109,11 @@ class NewsletterSubscriptionFunction
         $this->createFormFields($form, $this->config['form']['fields'], true);
 
         // Form extra fields do not need to be required
-        $this->createFormFields($form, $this->config['form']['extra_fields']);
+        if (is_array($this->config['form']['extra_fields'])) {
+            // This condition is necessary to avoid getting an error when simply
+            // writing {{ newslettersubscription() }} with an out-of-the-box installation
+            $this->createFormFields($form, $this->config['form']['extra_fields']);
+        }
 
         return $form->getForm();
     }
